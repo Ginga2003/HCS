@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HCS Emoji Password Experiment</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- 头部信息栏 -->
+        <header>
+            <h1>HCI 实验: 表情密码系统测试</h1>
+            <div class="controls">
+                <span id="currentUserDisplay">参与者: 未设置</span>
+            </div>
+        </header>
+
+        <!-- 视图 1: 欢迎与设置 -->
+        <section id="view-setup" class="view active">
+            <h2>欢迎参与实验</h2>
+            <p>本实验旨在研究不同设计的表情符号密码键盘的用户体验和效率。</p>
+            <p class="ethics-note">执行实验前，请确保您已阅读并同意 <a
+                    href="https://www.gla.ac.uk/schools/computing/informationforstudents/#ethicsprocedures"
+                    target="_blank">格拉斯哥大学伦理同意书</a>。</p>
+
+            <div class="setup-form glass-panel">
+                <label for="participantId">请输入您的参与者编号 (例如: P01):</label>
+                <input type="text" id="participantId" placeholder="P01" autocomplete="off">
+
+                <div style="margin: 10px 0;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                        <span class="label-text">启用 实验模式 (动态打乱+混淆+掩码)</span>
+                    </label>
+                </div>
+
+                <button id="btnStartTasks" class="primary-btn">开始测试任务</button>
+            </div>
+        </section>
+
+        <!-- 视图 2: 任务主界面 (注册/登录共用) -->
+        <section id="view-task" class="view">
+            <div class="task-header group">
+                <h2 id="taskTitle">当前任务</h2>
+                <div class="task-instructions" id="taskInstructions">
+                    <!-- 动态插入说明 -->
+                </div>
+            </div>
+
+            <div class="password-area glass-panel">
+                <div class="password-display-wrapper">
+                    <div id="passwordDisplay" class="password-display empty">请点击下方表情输入密码 (至少4位)</div>
+                    <span id="charCount" class="char-count">已输入: 0位</span>
+                </div>
+                <!-- 错误提示容器 -->
+                <div id="errorMessage" class="error-message hidden">
+                    ⚠ 密码过于简单：不能包含连续 4 个相同的表情！
+                </div>
+            </div>
+
+            <!-- 键盘区 -->
+            <div class="keyboard-area glass-panel">
+                <div id="emojiKeyboard" class="emoji-grid">
+                    <!-- JS 动态生成按键 -->
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="btnClear" class="secondary-btn">清空 (重启当前任务)</button>
+                <button id="btnSubmit" class="primary-btn" disabled>提交 (需至少4位)</button>
+            </div>
+        </section>
+
+        <!-- 视图 3: 锁定警告界面 (Task 3) -->
+        <section id="view-locked" class="view">
+            <div class="locked-container glass-panel">
+                <div class="lock-icon">🔒</div>
+                <h2>系统已安全锁定</h2>
+                <p>检测到连续 3 次密码输入错误。这证明了系统针对暴力破解或“肩窥”的防御机制生效。</p>
+                <p>Task 3 测试完成！</p>
+                <button id="btnContinueAfterLock" class="primary-btn">继续下一步</button>
+            </div>
+        </section>
+
+        <!-- 视图 4: 结果数据与导出 -->
+        <section id="view-results" class="view">
+            <h2>实验数据统计</h2>
+            <p>感谢您完成实验环节！</p>
+            <div class="results-table glass-panel">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>参与者</th>
+                            <th>模式</th>
+                            <th>任务</th>
+                            <th>尝试次数</th>
+                            <th>用时 (秒)</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataBody">
+                        <!-- JS 填充数据 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="action-buttons result-actions">
+                <button id="btnExportCSV" class="primary-btn">⬇ 导出数据为 CSV</button>
+                <button id="btnResetApp" class="secondary-btn">↺ 重置应用进行下一个测试</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- 成功提示 Toast -->
+    <div id="toastContent" class="toast">操作成功</div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
