@@ -39,7 +39,7 @@ body {
 
 header {
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 40px;
 }
 
 header h1 {
@@ -54,7 +54,7 @@ header h1 {
 
 .controls {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     font-size: 14px;
     color: #8b949e;
@@ -80,6 +80,16 @@ header h1 {
 
 .view.active {
     display: block;
+}
+
+.view>h2 {
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.view>p {
+    margin-bottom: 16px;
+    line-height: 1.6;
 }
 
 @keyframes fadeIn {
@@ -119,7 +129,8 @@ header h1 {
 .ethics-note {
     font-size: 13px;
     color: #8b949e;
-    margin-bottom: 20px;
+    margin-top: 10px;
+    margin-bottom: 25px;
 }
 
 .ethics-note a {
@@ -225,7 +236,7 @@ input:checked+.slider:before {
 
 /* Task Area */
 .task-header {
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .task-header h2 {
@@ -395,9 +406,9 @@ td {
 /* Toast */
 .toast {
     position: fixed;
-    bottom: 30px;
+    top: 30px;
     left: 50%;
-    transform: translateX(-50%) translateY(100px);
+    transform: translateX(-50%) translateY(-100px);
     background: var(--success-color);
     color: white;
     padding: 12px 24px;

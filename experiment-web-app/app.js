@@ -16,10 +16,11 @@ let state = {
     isExperimentalMode: false,
     currentTask: 1, // 1: Register, 2: Login, 3: Lockout Test
     currentPassword: [], // What user is currently typing
-    registeredPassword: [], // Store the successful registration password for Login task
     taskStartTime: 0,
     loginAttempts: 0,
-    resultsData: [] // Array to hold completed task data
+    isTransitioning: false, // Prevents input during successful submit delays
+    resultsData: [], // Array to hold completed task data
+    currentRunStartIndex: 0 // Track where the current test session started
 };
 
 // DOM Elements
@@ -69,11 +70,11 @@ function showToast(message, isError = false) {
 UI.btnStartTasks.addEventListener('click', () => {
     const pId = UI.participantIdInput.value.trim();
     if (!pId) {
-        alert("请输入参与者编号！");
+        alert("Please enter a Participant ID!");
         return;
     }
     state.participantId = pId;
-    UI.currentUserDisplay.textContent = `参与者: ${pId}`;
+    UI.currentUserDisplay.textContent = `Participant: ${pId}`;
     startTask(1); // Start with Task 1 (Registration)
 });
 
@@ -91,6 +92,7 @@ UI.modeToggle.addEventListener('change', (e) => {
 function startTask(taskNumber) {
     state.currentTask = taskNumber;
     state.taskStartTime = Date.now();
+    state.isTransitioning = false; // Release input lock
     resetCurrentTaskInput();
 
     switchView('task');
@@ -101,24 +103,24 @@ function startTask(taskNumber) {
 function setupTaskUI() {
     switch (state.currentTask) {
         case 1:
-            UI.taskTitle.textContent = "Task 1: 创建表情密码";
+            UI.taskTitle.textContent = "Task 1: Create Emoji Password";
             UI.taskInstructions.innerHTML = `
-                请使用键盘设置您的密码（长度不限，至少 ${MIN_PASSWORD_LENGTH} 位）。<br>
-                <em>测试要求：请尝试设置过于简单的密码（连续选择4个相同的表情），查看安全提示，然后再正常完成注册。</em>
+                Please set up your password using the keyboard below (no length limit, minimum ${MIN_PASSWORD_LENGTH} characters).<br>
+                <em>Test Instruction: Try to set a password that is too simple (select 4 identical emojis consecutively) to see the security warning, then complete the registration normally.</em>
             `;
             break;
         case 2:
-            UI.taskTitle.textContent = "Task 2: 安全登录";
+            UI.taskTitle.textContent = "Task 2: Secure Login";
             UI.taskInstructions.innerHTML = `
-                请使用您刚刚在 Task 1 中创建的密码进行登录。<br>
-                <em>实验配合：请主导人员或观察者进行“肩窥(测试偷看)”，评估安全性。</em>
+                Please log in using the password you just created in Task 1.<br>
+                <em>Experiment Setup: The experimenter or an observer will perform "shoulder surfing" (attempt to peek) to evaluate security.</em>
             `;
             state.loginAttempts = 0;
             break;
         case 3:
-            UI.taskTitle.textContent = "Task 3: 触发安全警报";
+            UI.taskTitle.textContent = "Task 3: Trigger Security Lockout";
             UI.taskInstructions.innerHTML = `
-                请故意连续 <strong>输错 3 次</strong> 密码，看看系统会有什么响应。
+                Please intentionally enter the wrong password <strong>3 consecutive times</strong> to observe the system's response.
             `;
             state.loginAttempts = 0;
             break;
@@ -174,6 +176,8 @@ function renderKeyboard() {
 // --- Input Handling ---
 
 function handleEmojiClick(emoji) {
+    if (state.isTransitioning) return; // Block input while moving to next task
+
     state.currentPassword.push(emoji);
     UI.errorMessage.classList.add('hidden'); // Ensure error goes away upon new input
     updatePasswordDisplay();
@@ -203,11 +207,11 @@ function updatePasswordDisplay() {
     const len = state.currentPassword.length;
 
     // We update the character count to show how many they have inputted
-    UI.charCount.textContent = `已输入: ${len}位`;
+    UI.charCount.textContent = `Entered: ${len} chars`;
 
     if (len === 0) {
         UI.passwordDisplay.classList.add('empty');
-        UI.passwordDisplay.textContent = `请点击下方表情输入密码 (至少 ${MIN_PASSWORD_LENGTH} 位)`;
+        UI.passwordDisplay.textContent = `Click emojis below to enter password (min ${MIN_PASSWORD_LENGTH} chars)`;
         UI.btnSubmit.disabled = true;
     } else {
         UI.passwordDisplay.classList.remove('empty');
@@ -231,7 +235,7 @@ UI.btnClear.addEventListener('click', resetCurrentTaskInput);
 
 UI.btnSubmit.addEventListener('click', () => {
     const timeTaken = ((Date.now() - state.taskStartTime) / 1000).toFixed(2);
-    const modeName = state.isExperimentalMode ? '实验模式(动态+掩码+混淆)' : '普通模式(静态)';
+    const modeName = state.isExperimentalMode ? 'Experimental (Dynamic+Mask+Decoy)' : 'Baseline (Static)';
 
     if (state.currentTask === 1) {
         // Validation: Must not contain 4 consecutive identical characters
@@ -247,37 +251,56 @@ UI.btnSubmit.addEventListener('click', () => {
         // Registration success
         UI.errorMessage.classList.add('hidden');
         state.registeredPassword = [...state.currentPassword];
-        recordResult(`Task 1: 注册`, modeName, 1, timeTaken, '成功');
-        showToast('注册成功！正在进入 Task 2...');
+        recordResult(`Task 1: Register`, modeName, 1, timeTaken, 'Success');
+        showToast('Registration successful! Proceeding to Task 2...');
+        state.isTransitioning = true; // Lock keyboard
         setTimeout(() => startTask(2), 1500);
 
     } else if (state.currentTask === 2) {
         // Login task
         state.loginAttempts++;
         if (state.currentPassword.join('') === state.registeredPassword.join('')) {
-            recordResult(`Task 2: 登录`, modeName, state.loginAttempts, timeTaken, '成功');
-            showToast('登录成功！正在进入 Task 3...');
+            recordResult(`Task 2: Login`, modeName, state.loginAttempts, timeTaken, 'Success');
+            showToast('Login successful! Proceeding to Task 3...');
+            state.isTransitioning = true; // Lock keyboard
             setTimeout(() => startTask(3), 1500);
         } else {
-            showToast(`密码错误！(尝试 ${state.loginAttempts}/${MAX_LOGIN_ATTEMPTS})`, true);
-            resetCurrentTaskInput();
+            if (state.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+                // Task 2 Failed -> Trigger Lockout
+                recordResult(`Task 2: Login`, modeName, state.loginAttempts, timeTaken, 'Failed');
+                recordResult(`Task 3: Lockout Test`, modeName, 0, 0, 'Auto-Completed by Task 2 Failure');
+                document.getElementById('lockoutMessage').innerHTML = `
+                    <p>Detected 3 consecutive failed login attempts in Task 2. This demonstrates the system's defense mechanism against brute-force or shoulder surfing attacks is active.</p>
+                    <p>Since the lockout was triggered during your login attempt, Task 3 (Security Lockout Test) has been automatically completed!</p>
+                `;
+                switchView('locked');
+            } else {
+                showToast(`Incorrect password! (Attempt ${state.loginAttempts}/${MAX_LOGIN_ATTEMPTS})`, true);
+                resetCurrentTaskInput();
+            }
         }
 
     } else if (state.currentTask === 3) {
         // Lockout test task
-        state.loginAttempts++;
         if (state.currentPassword.join('') === state.registeredPassword.join('')) {
-            showToast(`请故意输错！这才是 Task 3 的目的。`, true);
+            showToast(`Please fail intentionally! That is the goal of Task 3.`, true);
             resetCurrentTaskInput();
-            return;
+            return; // Stops here, attempt is NOT incremented
         }
 
+        // Reaches here ONLY if the password was genuinely incorrect
+        state.loginAttempts++;
+
         if (state.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-            // Trigger Lockout
-            recordResult(`Task 3: 锁屏测试`, modeName, state.loginAttempts, timeTaken, '成功触发锁定');
+            // Trigger Lockout normally
+            recordResult(`Task 3: Lockout Test`, modeName, state.loginAttempts, timeTaken, 'Success');
+            document.getElementById('lockoutMessage').innerHTML = `
+                <p>Detected 3 consecutive failed login attempts. This demonstrates the system's defense mechanism against brute-force or shoulder surfing attacks is active.</p>
+                <p>Task 3 analysis complete!</p>
+            `;
             switchView('locked');
         } else {
-            showToast(`密码错误！(尝试 ${state.loginAttempts}/${MAX_LOGIN_ATTEMPTS})`, true);
+            showToast(`Incorrect password! (Attempt ${state.loginAttempts}/${MAX_LOGIN_ATTEMPTS})`, true);
             resetCurrentTaskInput();
         }
     }
@@ -303,7 +326,11 @@ function recordResult(taskName, mode, attempts, time, status) {
 
 function updateResultsTable() {
     UI.dataBody.innerHTML = '';
-    state.resultsData.forEach(row => {
+
+    // Only display results for the current run, not the whole history
+    const currentRunData = state.resultsData.slice(state.currentRunStartIndex);
+
+    currentRunData.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${row.pId}</td>
@@ -319,11 +346,13 @@ function updateResultsTable() {
 
 // --- App Reset ---
 UI.btnResetApp.addEventListener('click', () => {
-    // We keep results data for export, but reset the task flow
+    // We keep results data for export, but reset the task flow for the new run
+    state.currentRunStartIndex = state.resultsData.length; // Set marker for the new run
+
     state.participantId = '';
     state.registeredPassword = [];
     UI.participantIdInput.value = '';
-    UI.currentUserDisplay.textContent = '参与者: 未设置';
+    UI.currentUserDisplay.textContent = 'Participant: Not Set';
     UI.modeToggle.checked = false; // Reset to baseline manually if desired
     state.isExperimentalMode = false;
     switchView('setup');
@@ -332,7 +361,7 @@ UI.btnResetApp.addEventListener('click', () => {
 // --- CSV Export ---
 UI.btnExportCSV.addEventListener('click', () => {
     if (state.resultsData.length === 0) {
-        alert("暂无数据可导出！");
+        alert("No data available to export yet!");
         return;
     }
 
