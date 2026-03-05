@@ -20,7 +20,9 @@ let state = {
     loginAttempts: 0,
     isTransitioning: false, // Prevents input during successful submit delays
     resultsData: [], // Array to hold completed task data
-    currentRunStartIndex: 0 // Track where the current test session started
+    currentRunStartIndex: 0, // Track where the current test session started
+    showLastChar: false, // Flag to show the last typed character in experimental mode
+    maskTimeout: null // Holds the setTimeout ID
 };
 
 // DOM Elements
@@ -129,6 +131,8 @@ function setupTaskUI() {
 
 function resetCurrentTaskInput() {
     state.currentPassword = [];
+    state.showLastChar = false;
+    if (state.maskTimeout) clearTimeout(state.maskTimeout);
     UI.errorMessage.classList.add('hidden');
     updatePasswordDisplay();
 }
@@ -180,11 +184,22 @@ function handleEmojiClick(emoji) {
 
     state.currentPassword.push(emoji);
     UI.errorMessage.classList.add('hidden'); // Ensure error goes away upon new input
-    updatePasswordDisplay();
 
-    // Dynamic reflow
     if (state.isExperimentalMode) {
+        // Show last character temporarily
+        if (state.maskTimeout) clearTimeout(state.maskTimeout);
+        state.showLastChar = true;
+        updatePasswordDisplay();
+
+        state.maskTimeout = setTimeout(() => {
+            state.showLastChar = false;
+            updatePasswordDisplay();
+        }, 1000); // Wait 1 second before turning to *
+
+        // Dynamic reflow
         renderKeyboard();
+    } else {
+        updatePasswordDisplay();
     }
 }
 
@@ -217,8 +232,12 @@ function updatePasswordDisplay() {
         UI.passwordDisplay.classList.remove('empty');
 
         if (state.isExperimentalMode) {
-            // Mask input
-            UI.passwordDisplay.textContent = '*'.repeat(len);
+            // Mask input but optionally show last char
+            if (state.showLastChar && len > 0) {
+                UI.passwordDisplay.textContent = '*'.repeat(len - 1) + state.currentPassword[len - 1];
+            } else {
+                UI.passwordDisplay.textContent = '*'.repeat(len);
+            }
         } else {
             // Show plaintext
             UI.passwordDisplay.textContent = state.currentPassword.join('');
